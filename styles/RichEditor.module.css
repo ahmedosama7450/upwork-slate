@@ -1,0 +1,29 @@
+.container {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2rem;
+}
+
+.editorArea {
+  width: 30rem;
+  padding: 1rem;
+  border: 1px solid black;
+  border-radius: 3px;
+}
+
+.inputArea {
+  width: 20rem;
+  padding: 1rem;
+  border: 1px solid black;
+  border-radius: 3px;
+}
+
+.field {
+  padding: 0.5rem;
+  border: 1px solid #eaeaea;
+}
+
+.field:nth-child(2) {
+  margin-top: 20px;
+}
