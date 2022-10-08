@@ -23,24 +23,27 @@ import { nanoid } from "nanoid";
 import { withFields } from "../utils/withFields";
 
 import styles from "../styles/RichEditor.module.css";
+import { withHistory } from "slate-history";
+import { HistoryEditor } from "slate-history/dist/history-editor";
 
-type ParagraphElement = {
-  type: "paragraph";
-  children: CustomText[];
-};
+type CustomText = { text: string };
 
 type FieldElement = {
   type: "field";
   id: string;
   content: string;
+  order: number;
   children: CustomText[];
 };
 
-type CustomText = { text: string };
+type ParagraphElement = {
+  type: "paragraph";
+  children: (CustomText | FieldElement)[];
+};
 
 declare module "slate" {
   interface CustomTypes {
-    Editor: BaseEditor & ReactEditor;
+    Editor: BaseEditor & ReactEditor & HistoryEditor;
     Element: ParagraphElement | FieldElement;
     Text: CustomText;
   }
@@ -66,9 +69,12 @@ const initialValue: Descendant[] = [
 ];
 
 export const RichEditor = () => {
-  const [editor] = useState(() => withFields(withReact(createEditor())));
+  const [editor] = useState(() =>
+    withFields(withReact(withHistory(createEditor())))
+  );
 
   const [fieldsIds, setFieldsIds] = useState<string[]>([]);
+  const [nextFieldOrder, setNextFieldOrder] = useState(0);
 
   const renderElement = useCallback(
     ({ attributes, children, element }: RenderElementProps) => {
@@ -98,40 +104,55 @@ export const RichEditor = () => {
     []
   );
 
+  const turnIntoField = () => {
+    if (!editor.selection || Range.isCollapsed(editor.selection)) return;
+
+    // Check if there this is already a field
+    const [match] = Editor.nodes(editor, {
+      match: (n) => Element.isElement(n) && n.type === "field",
+    });
+    if (match) return;
+
+    // Insert field element
+    const fieldContent = Editor.string(editor, editor.selection);
+    const fieldId = nanoid();
+
+    Transforms.insertNodes(editor, {
+      type: "field",
+      id: fieldId,
+      content: fieldContent,
+      order: nextFieldOrder,
+      children: [{ text: "" }],
+    });
+
+    setNextFieldOrder((order) => order + 1);
+    setFieldsIds((ids) => [...ids, fieldId]);
+  };
+
   return (
     <Slate
       editor={editor}
       value={initialValue}
       onChange={(value) => {
         console.log(value);
+
+        const fieldsElements: FieldElement[] = [];
+
+        for (const node of value) {
+          if (Element.isElement(node)) {
+            for (const childNode of node.children) {
+              if (Element.isElement(childNode) && childNode.type === "field") {
+                fieldsElements.push(childNode);
+              }
+            }
+          }
+        }
+
+        fieldsElements.sort((a, b) => a.order - b.order);
+        setFieldsIds(fieldsElements.map((field) => field.id));
       }}
     >
-      <button
-        onClick={() => {
-          if (!editor.selection || Range.isCollapsed(editor.selection)) return;
-
-          // Check if there this is already a field
-          const [match] = Editor.nodes(editor, {
-            match: (n) => Element.isElement(n) && n.type === "field",
-          });
-          if (match) return;
-
-          // Insert field element
-          const fieldContent = Editor.string(editor, editor.selection);
-          const fieldId = nanoid();
-
-          Transforms.insertNodes(editor, {
-            type: "field",
-            id: fieldId,
-            content: fieldContent,
-            children: [{ text: "" }],
-          });
-
-          setFieldsIds((ids) => [...ids, fieldId]);
-        }}
-      >
-        Turn into field
-      </button>
+      <button onClick={() => turnIntoField()}>Turn into field</button>
 
       <div className={styles.container}>
         <Editable
