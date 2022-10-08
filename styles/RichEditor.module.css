@@ -22,8 +22,5 @@
 .field {
   padding: 0.5rem;
   border: 1px solid #eaeaea;
-}
-
-.field:nth-child(2) {
   margin-top: 20px;
 }
