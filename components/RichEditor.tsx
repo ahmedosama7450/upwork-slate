@@ -63,21 +63,6 @@ const initialValue: Descendant[] = [
     type: "paragraph",
     children: [{ text: "I live in Egypt" }],
   },
-  /*   {
-    type: "paragraph",
-    children: [
-      { text: "My first name is " },
-      { text: "ahmed", editable: false },
-    ],
-  },
-  {
-    type: "paragraph",
-    children: [{ text: "My second name is " }, { text: "", editable: false }],
-  },
-  {
-    type: "paragraph",
-    children: [{ text: "" }],
-  }, */
 ];
 
 export const RichEditor = () => {
@@ -108,10 +93,6 @@ export const RichEditor = () => {
 
   const renderLeaf = useCallback(
     ({ attributes, children, leaf }: RenderLeafProps) => {
-      /* if (leaf.bold) {
-        children = <strong>{children}</strong>;
-      } */
-
       return <span {...attributes}>{children}</span>;
     },
     []
@@ -136,7 +117,6 @@ export const RichEditor = () => {
           if (match) return;
 
           // Insert field element
-
           const fieldContent = Editor.string(editor, editor.selection);
           const fieldId = nanoid();
 
@@ -147,7 +127,6 @@ export const RichEditor = () => {
             children: [{ text: "" }],
           });
 
-          // Add input to the dom
           setFieldsIds((ids) => [...ids, fieldId]);
         }}
       >
