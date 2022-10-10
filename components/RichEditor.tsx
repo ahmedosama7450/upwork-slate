@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { Dispatch, SetStateAction, useCallback, useState } from "react";
 import {
   BaseEditor,
   Editor,
@@ -21,12 +21,13 @@ import {
 import { nanoid } from "nanoid";
 
 import { withFields } from "../utils/withFields";
+import { withEditable } from "../utils/withEditable";
 
 import styles from "../styles/RichEditor.module.css";
 import { withHistory } from "slate-history";
 import { HistoryEditor } from "slate-history/dist/history-editor";
 
-type CustomText = { text: string };
+type CustomText = { text: string; editable?: boolean };
 
 type FieldElement = {
   type: "field";
@@ -68,9 +69,15 @@ const initialValue: Descendant[] = [
   },
 ];
 
-export const RichEditor = () => {
+export const RichEditor = ({
+  isAdmin,
+  setIsAdmin,
+}: {
+  isAdmin: boolean;
+  setIsAdmin: Dispatch<SetStateAction<boolean>>;
+}) => {
   const [editor] = useState(() =>
-    withFields(withReact(withHistory(createEditor())))
+    withEditable(withFields(withReact(withHistory(createEditor()))), isAdmin)
   );
 
   const [fieldsIds, setFieldsIds] = useState<string[]>([]);
@@ -99,9 +106,19 @@ export const RichEditor = () => {
 
   const renderLeaf = useCallback(
     ({ attributes, children, leaf }: RenderLeafProps) => {
-      return <span {...attributes}>{children}</span>;
+      return (
+        <span
+          {...attributes}
+          contentEditable={
+            isAdmin ? true : leaf.editable === undefined ? false : leaf.editable
+          }
+          style={{ backgroundColor: leaf.editable ? "lightblue" : undefined }}
+        >
+          {children}
+        </span>
+      );
     },
-    []
+    [isAdmin]
   );
 
   const turnIntoField = () => {
@@ -129,6 +146,26 @@ export const RichEditor = () => {
     setFieldsIds((ids) => [...ids, fieldId]);
   };
 
+  const turnIntoEditable = () => {
+    if (!editor.selection || Range.isCollapsed(editor.selection)) return;
+
+    Transforms.setNodes(
+      editor,
+      { editable: true },
+      { match: (n) => Text.isText(n), split: true }
+    );
+  };
+
+  const turnIntoReadonly = () => {
+    if (!editor.selection || Range.isCollapsed(editor.selection)) return;
+
+    Transforms.setNodes(
+      editor,
+      { editable: false },
+      { match: (n) => Text.isText(n), split: true }
+    );
+  };
+
   return (
     <Slate
       editor={editor}
@@ -152,7 +189,19 @@ export const RichEditor = () => {
         setFieldsIds(fieldsElements.map((field) => field.id));
       }}
     >
-      <button onClick={() => turnIntoField()}>Turn into field</button>
+      {isAdmin && (
+        <div>
+          <button onClick={() => turnIntoField()}>Turn into field</button>
+          <button onClick={() => turnIntoEditable()}>Turn into editable</button>
+          <button onClick={() => turnIntoReadonly()}>Turn into readonly</button>
+        </div>
+      )}
+
+      <div>
+        <button onClick={() => setIsAdmin((isAdmin) => !isAdmin)}>
+          {isAdmin ? "Change to End User" : "Change to Admin"}
+        </button>
+      </div>
 
       <div className={styles.container}>
         <Editable
