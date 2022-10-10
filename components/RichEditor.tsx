@@ -1,4 +1,10 @@
-import React, { Dispatch, SetStateAction, useCallback, useState } from "react";
+import React, {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import {
   BaseEditor,
   Editor,
@@ -69,16 +75,23 @@ const initialValue: Descendant[] = [
   },
 ];
 
-export const RichEditor = ({
-  isAdmin,
-  setIsAdmin,
-}: {
-  isAdmin: boolean;
-  setIsAdmin: Dispatch<SetStateAction<boolean>>;
-}) => {
+const isAdminState = {
+  isAdmin: true,
+};
+
+export const RichEditor = () => {
+  const [isAdmin, setIsAdmin] = useState(true);
+
   const [editor] = useState(() =>
-    withEditable(withFields(withReact(withHistory(createEditor()))), isAdmin)
+    withEditable(
+      withFields(withReact(withHistory(createEditor()))),
+      isAdminState
+    )
   );
+
+  useEffect(() => {
+    isAdminState.isAdmin = isAdmin;
+  }, [isAdmin]);
 
   const [fieldsIds, setFieldsIds] = useState<string[]>([]);
   const [nextFieldOrder, setNextFieldOrder] = useState(0);
@@ -110,9 +123,15 @@ export const RichEditor = ({
         <span
           {...attributes}
           contentEditable={
-            isAdmin ? true : leaf.editable === undefined ? false : leaf.editable
+            isAdmin ? true : leaf.editable !== undefined && leaf.editable
           }
-          style={{ backgroundColor: leaf.editable ? "lightblue" : undefined }}
+          style={{
+            backgroundColor:
+              leaf.editable !== undefined && leaf.editable
+                ? "lightblue"
+                : undefined,
+          }}
+          suppressContentEditableWarning={true}
         >
           {children}
         </span>
@@ -208,6 +227,10 @@ export const RichEditor = ({
           className={styles.editorArea}
           renderElement={renderElement}
           renderLeaf={renderLeaf}
+          draggable={false}
+          onDragStart={(e) => {
+            if (!isAdmin) e.preventDefault();
+          }}
         />
 
         <div className={styles.inputArea}>
