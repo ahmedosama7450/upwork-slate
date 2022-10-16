@@ -8,14 +8,6 @@ export const withEditable = (
     deleteBackward,
     deleteForward,
     deleteFragment,
-    insertBreak,
-    insertFragment,
-    insertNode,
-    insertText,
-    insertData,
-    insertFragmentData,
-    insertTextData,
-    insertSoftBreak,
   } = editor;
 
   editor.deleteBackward = (unit) => {

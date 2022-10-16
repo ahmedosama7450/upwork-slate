@@ -1,10 +1,4 @@
-import React, {
-  Dispatch,
-  SetStateAction,
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   BaseEditor,
   Editor,
@@ -56,30 +50,15 @@ declare module "slate" {
   }
 }
 
-const initialValue: Descendant[] = [
-  {
-    type: "paragraph",
-    children: [{ text: "Personal Details" }],
-  },
-  {
-    type: "paragraph",
-    children: [{ text: "My first name is ahmed" }],
-  },
-  {
-    type: "paragraph",
-    children: [{ text: "My second name is osama " }],
-  },
-  {
-    type: "paragraph",
-    children: [{ text: "I live in Egypt" }],
-  },
-];
-
 const isAdminState = {
   isAdmin: true,
 };
 
-export const RichEditor = () => {
+export const RichEditor = ({
+  initialValue,
+}: {
+  initialValue: Descendant[];
+}) => {
   const [isAdmin, setIsAdmin] = useState(true);
 
   const [editor] = useState(() =>
@@ -190,8 +169,10 @@ export const RichEditor = () => {
       editor={editor}
       value={initialValue}
       onChange={(value) => {
-        console.log(value);
+        // console.log(value);
 
+        // We are looking for all fields elements in slate value
+        // and then put them in `fieldsElements`
         const fieldsElements: FieldElement[] = [];
 
         for (const node of value) {
@@ -204,8 +185,19 @@ export const RichEditor = () => {
           }
         }
 
+        // We are sorting the fields elements by their order
         fieldsElements.sort((a, b) => a.order - b.order);
         setFieldsIds(fieldsElements.map((field) => field.id));
+
+        // Saving value to localstorage
+        const isAstChange = editor.operations.some(
+          (op) => "set_selection" !== op.type
+        );
+        if (isAstChange) {
+          // Save the value to Local Storage.
+          const content = JSON.stringify(value);
+          localStorage.setItem("content", content);
+        }
       }}
     >
       {isAdmin && (
