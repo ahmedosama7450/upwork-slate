@@ -8,7 +8,6 @@ import {
   Text,
   Element,
   Range,
-  Node,
 } from "slate";
 import {
   Slate,
@@ -119,6 +118,20 @@ export const RichEditor = ({
     [isAdmin]
   );
 
+  const getTemplatesNames = () => {
+    const templatesNames: string[] = [];
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+
+      if (key && key.startsWith("template-")) {
+        templatesNames.push(key);
+      }
+    }
+
+    return templatesNames;
+  };
+
   const turnIntoField = () => {
     if (!editor.selection || Range.isCollapsed(editor.selection)) return;
 
@@ -164,6 +177,13 @@ export const RichEditor = ({
     );
   };
 
+  const saveTemplate = () => {
+    localStorage.setItem(
+      "template-" + nanoid(),
+      JSON.stringify(editor.children)
+    );
+  };
+
   return (
     <Slate
       editor={editor}
@@ -205,6 +225,53 @@ export const RichEditor = ({
           <button onClick={() => turnIntoField()}>Turn into field</button>
           <button onClick={() => turnIntoEditable()}>Turn into editable</button>
           <button onClick={() => turnIntoReadonly()}>Turn into readonly</button>
+          <button onClick={() => saveTemplate()}>Save template</button>
+        </div>
+      )}
+
+      {!isAdmin && (
+        <div>
+          {getTemplatesNames().map((templateName) => (
+            <button
+              key={templateName}
+              onClick={() => {
+                const template = localStorage.getItem(templateName);
+
+                if (template) {
+                  const templateValue = JSON.parse(template);
+
+                  // Get initial total nodes to prevent deleting affecting the loop
+                  let totalNodes = editor.children.length;
+
+                  // No saved content, don't delete anything to prevent errors
+                  if (templateValue.length <= 0) return;
+
+                  // Remove every node except the last one
+                  // Otherwise SlateJS will return error as there's no content
+                  for (let i = 0; i < totalNodes - 1; i++) {
+                    console.log(i);
+                    Transforms.removeNodes(editor, {
+                      at: [totalNodes - i - 1],
+                    });
+                  }
+
+                  // Add content to SlateJS
+                  for (const value of templateValue) {
+                    Transforms.insertNodes(editor, value, {
+                      at: [editor.children.length],
+                    });
+                  }
+
+                  // Remove the last node that was leftover from before
+                  Transforms.removeNodes(editor, {
+                    at: [0],
+                  });
+                }
+              }}
+            >
+              {templateName}
+            </button>
+          ))}
         </div>
       )}
 
