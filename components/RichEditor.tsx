@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   BaseEditor,
   Editor,
@@ -53,6 +53,14 @@ const isAdminState = {
   isAdmin: true,
 };
 
+type Document = {
+  templateId: string;
+  documentFields: {
+    fieldId: string;
+    fieldValue: string;
+  }[];
+};
+
 export const RichEditor = ({
   initialValue,
 }: {
@@ -67,12 +75,16 @@ export const RichEditor = ({
     )
   );
 
+  const templateIdRef = useRef<string>();
+
   useEffect(() => {
     isAdminState.isAdmin = isAdmin;
   }, [isAdmin]);
 
   const [fieldsIds, setFieldsIds] = useState<string[]>([]);
   const [nextFieldOrder, setNextFieldOrder] = useState(0);
+
+  const [currentDocument, setCurrentDocument] = useState<Descendant[]>();
 
   const renderElement = useCallback(
     ({ attributes, children, element }: RenderElementProps) => {
@@ -118,18 +130,18 @@ export const RichEditor = ({
     [isAdmin]
   );
 
-  const getTemplatesNames = () => {
-    const templatesNames: string[] = [];
+  const getTemplatesIds = () => {
+    const templatesIds: string[] = [];
 
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
 
       if (key && key.startsWith("template-")) {
-        templatesNames.push(key);
+        templatesIds.push(key);
       }
     }
 
-    return templatesNames;
+    return templatesIds;
   };
 
   const turnIntoField = () => {
@@ -184,6 +196,55 @@ export const RichEditor = ({
     );
   };
 
+  const saveDocument = () => {
+    const documentFields: { fieldId: string; fieldValue: string }[] = [];
+
+    for (const fieldId of fieldsIds) {
+      for (const node of editor.children) {
+        if (Element.isElement(node)) {
+          for (const childNode of node.children) {
+            if (
+              Element.isElement(childNode) &&
+              childNode.type === "field" &&
+              childNode.id === fieldId
+            ) {
+              documentFields.push({
+                fieldId: fieldId,
+                fieldValue: childNode.content,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    const document: Document = {
+      templateId: templateIdRef.current!,
+      documentFields,
+    };
+
+    localStorage.setItem("document-" + nanoid(), JSON.stringify(document));
+  };
+
+  const getDocumentsIds = () => {
+    const documentsIds: string[] = [];
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+
+      if (key && key.startsWith("document-")) {
+        documentsIds.push(key);
+      }
+    }
+
+    return documentsIds;
+  };
+
+  const recreateDocument = (document: Document): string => {
+    // TODO
+    return "";
+  };
+
   return (
     <Slate
       editor={editor}
@@ -231,11 +292,12 @@ export const RichEditor = ({
 
       {!isAdmin && (
         <div>
-          {getTemplatesNames().map((templateName) => (
+          <button onClick={() => saveDocument()}>Save document</button>
+          {getTemplatesIds().map((templateId) => (
             <button
-              key={templateName}
+              key={templateId}
               onClick={() => {
-                const template = localStorage.getItem(templateName);
+                const template = localStorage.getItem(templateId);
 
                 if (template) {
                   const templateValue = JSON.parse(template);
@@ -266,10 +328,12 @@ export const RichEditor = ({
                   Transforms.removeNodes(editor, {
                     at: [0],
                   });
+
+                  templateIdRef.current = templateId;
                 }
               }}
             >
-              {templateName}
+              {templateId}
             </button>
           ))}
         </div>
@@ -279,6 +343,21 @@ export const RichEditor = ({
         <button onClick={() => setIsAdmin((isAdmin) => !isAdmin)}>
           {isAdmin ? "Change to End User" : "Change to Admin"}
         </button>
+        {getDocumentsIds().map((documentId) => (
+          <button
+            key={documentId}
+            onClick={() => {
+              const document = localStorage.getItem(documentId);
+
+              if (document) {
+                const documentValue = JSON.parse(document);
+                setCurrentDocument(documentValue);
+              }
+            }}
+          >
+            {documentId}
+          </button>
+        ))}
       </div>
 
       <div className={styles.container}>
@@ -315,6 +394,8 @@ export const RichEditor = ({
           ))}
         </div>
       </div>
+
+      {currentDocument && <div>{JSON.stringify(currentDocument)}</div>}
     </Slate>
   );
 };
