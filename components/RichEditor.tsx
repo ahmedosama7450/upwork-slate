@@ -18,6 +18,8 @@ import {
   RenderLeafProps,
 } from "slate-react";
 import { nanoid } from "nanoid";
+import { htmlEscape } from "escape-goat";
+import parse from "html-react-parser";
 
 import { withFields } from "../utils/withFields";
 import { withEditable } from "../utils/withEditable";
@@ -84,7 +86,7 @@ export const RichEditor = ({
   const [fieldsIds, setFieldsIds] = useState<string[]>([]);
   const [nextFieldOrder, setNextFieldOrder] = useState(0);
 
-  const [currentDocument, setCurrentDocument] = useState<Descendant[]>();
+  const [currentDocumentHtml, setCurrentDocumentHtml] = useState<string>();
 
   const renderElement = useCallback(
     ({ attributes, children, element }: RenderElementProps) => {
@@ -240,9 +242,49 @@ export const RichEditor = ({
     return documentsIds;
   };
 
-  const recreateDocument = (document: Document): string => {
-    // TODO
-    return "";
+  const serializeToHtml = (
+    nodes: Descendant[],
+    fields: Document["documentFields"]
+  ): string => {
+    return nodes.map((n) => serializeToHtmlHelper(n, fields)).join("");
+  };
+
+  const serializeToHtmlHelper = (
+    node: Descendant,
+    fields: Document["documentFields"]
+  ): string => {
+    if (Text.isText(node)) {
+      let textHtml = htmlEscape(node.text);
+
+      /*      if (node.code) {
+        textHtml = `<code>${textHtml}</code>`;
+      } else {
+        if (node.bold) {
+          textHtml = `<strong>${textHtml}</strong>`;
+        }
+
+        if (node.italic) {
+          textHtml = `<em>${textHtml}</em>`;
+        }
+      }
+ */
+      return textHtml;
+    }
+
+    const children = node.children
+      .map((n) => serializeToHtmlHelper(n, fields))
+      .join("");
+
+    switch (node.type) {
+      case "field":
+        return `<span style="fontWeight:bold; backgroundColor:yellow;">${
+          fields.find((fieldProps) => {
+            return fieldProps.fieldId === node.id;
+          })?.fieldValue
+        }</span>`;
+      default:
+        return `<p>${children}</p>`;
+    }
   };
 
   return (
@@ -300,7 +342,7 @@ export const RichEditor = ({
                 const template = localStorage.getItem(templateId);
 
                 if (template) {
-                  const templateValue = JSON.parse(template);
+                  const templateValue: Descendant[] = JSON.parse(template);
 
                   // Get initial total nodes to prevent deleting affecting the loop
                   let totalNodes = editor.children.length;
@@ -350,8 +392,19 @@ export const RichEditor = ({
               const document = localStorage.getItem(documentId);
 
               if (document) {
-                const documentValue = JSON.parse(document);
-                setCurrentDocument(documentValue);
+                const documentValue: Document = JSON.parse(document);
+
+                const template = localStorage.getItem(documentValue.templateId);
+
+                if (template) {
+                  const templateValue: Descendant[] = JSON.parse(template);
+                  const documentHtml = serializeToHtml(
+                    templateValue,
+                    documentValue.documentFields
+                  );
+
+                  setCurrentDocumentHtml(documentHtml);
+                }
               }
             }}
           >
@@ -395,7 +448,7 @@ export const RichEditor = ({
         </div>
       </div>
 
-      {currentDocument && <div>{JSON.stringify(currentDocument)}</div>}
+      {currentDocumentHtml && <div>{parse(currentDocumentHtml)}</div>}
     </Slate>
   );
 };
