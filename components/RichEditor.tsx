@@ -27,6 +27,7 @@ import { withEditable } from "../utils/withEditable";
 import styles from "../styles/RichEditor.module.css";
 import { withHistory } from "slate-history";
 import { HistoryEditor } from "slate-history/dist/history-editor";
+import { Toolbar } from "./Toolbar";
 
 type CustomText = { text: string; editable?: boolean };
 
@@ -38,15 +39,30 @@ type FieldElement = {
   children: CustomText[];
 };
 
-type ParagraphElement = {
+export type ParagraphElement = {
   type: "paragraph";
+  children: (CustomText | FieldElement)[];
+  align?: "left" | "center" | "right" | "justify";
+};
+
+export type Heading1Element = {
+  type: "heading1";
+  children: (CustomText | FieldElement)[];
+};
+
+export type Heading2Element = {
+  type: "heading2";
   children: (CustomText | FieldElement)[];
 };
 
 declare module "slate" {
   interface CustomTypes {
     Editor: BaseEditor & ReactEditor & HistoryEditor;
-    Element: ParagraphElement | FieldElement;
+    Element:
+      | ParagraphElement
+      | FieldElement
+      | Heading1Element
+      | Heading2Element;
     Text: CustomText;
   }
 }
@@ -102,8 +118,16 @@ export const RichEditor = ({
               {element.content}
             </span>
           );
+        case "heading1":
+          return <h3 {...attributes}>{children}</h3>;
+        case "heading2":
+          return <h4 {...attributes}>{children}</h4>;
         default:
-          return <p {...attributes}>{children}</p>;
+          return (
+            <p style={{ textAlign: element.align }} {...attributes}>
+              {children}
+            </p>
+          );
       }
     },
     []
@@ -292,7 +316,7 @@ export const RichEditor = ({
       editor={editor}
       value={initialValue}
       onChange={(value) => {
-        // console.log(value);
+        console.log(value);
 
         // We are looking for all fields elements in slate value
         // and then put them in `fieldsElements`
@@ -411,6 +435,10 @@ export const RichEditor = ({
             {documentId}
           </button>
         ))}
+      </div>
+
+      <div>
+        <Toolbar />
       </div>
 
       <div className={styles.container}>
